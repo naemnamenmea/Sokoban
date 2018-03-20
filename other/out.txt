@@ -1,0 +1,37 @@
+move(state(agent(A), boxes(D)), state(agent(B), boxes([C|E])), pRight) :-
+	right(A, B),
+	right(B, C),
+	member(B, D),
+	\+ banned(r, C, D),
+	select(B, D, E).
+move(state(agent(B), boxes(D)), state(agent(A), boxes([C|E])), pLeft) :-
+	right(A, B),
+	right(C, A),
+	member(A, D),
+	\+ banned(l, C, D),
+	select(A, D, E).
+move(state(agent(A), boxes(D)), state(agent(B), boxes([C|E])), pUp) :-
+	top(A, B),
+	top(B, C),
+	member(B, D),
+	\+ banned(u, C, D),
+	select(B, D, E).
+move(state(agent(B), boxes(D)), state(agent(A), boxes([C|E])), pDown) :-
+	top(A, B),
+	top(C, A),
+	member(A, D),
+	\+ banned(d, C, D),
+	select(A, D, E).
+move(state(agent(B), boxes(A)), state(agent(C), boxes(A)), r) :-
+	right(B, C),
+	\+ blocked(C, A).
+move(state(agent(C), boxes(A)), state(agent(B), boxes(A)), l) :-
+	right(B, C),
+	\+ blocked(B, A).
+move(state(agent(B), boxes(A)), state(agent(C), boxes(A)), u) :-
+	top(B, C),
+	\+ blocked(C, A).
+move(state(agent(C), boxes(A)), state(agent(B), boxes(A)), d) :-
+	top(B, C),
+	\+ blocked(B, A).
+
