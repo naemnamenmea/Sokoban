@@ -28,16 +28,11 @@ Any other line separates levels
 ==================
 reachable_by_sokoban возвращать не кол-во шагов, а сам путь
 
-проблема повторной загрузки файла карты (consult(Map), draw_map(Map) выдает ошибку) если не ошибаюсь если использовать модули
-
-make
-user:
-если работаем с файлами как с модулями вообще дичь получается
-
 1. расстояние до цели использовать при выборе новой клетки, и если одна не подходитЮ более выгодная, то выбрать другую
 
-!!! заменить consult на ensure_loaded !!!
-namespaces как вообще они работают: что за ?? с help:help(X) ~ helpfgdgdf:help(X)
+почему redefine static procedure?!
+!!! заменить consult на ensure_loaded !!! make\0
+namespaces (:user) как вообще они работают: что за ?? с help:help(X) ~ helpfgdgdf:help(X)
 
 запретить перемещения бочек в тупики
 */
@@ -68,7 +63,7 @@ add_maps([H|T]) :-
     add_maps(Out),
     add_maps(T).   
 add_maps([H|T]) :- 
-    format('__==\'~s\'==__~n',[H]), 
+    format('File: \'~s\'~n',[H]), 
     (add_map_list(H) ; true), nl, !, 
     add_maps(T).
     
@@ -161,7 +156,7 @@ add_map_list(File) :-
     working_directory(_,CWD),
     close(In)
     ).
-    
+ 
 add_map_list_(end_of_file,_,M,N,T,EM,MN) :- !,
     (
         ( MN\=='' -> T1 is T+1, ( add_map(MN,M) -> (N1 is N+1, EM1=EM) ; (N1=N, EM1=[MN|EM]) ) ) ; (N1=N, T1=T, EM1=EM)
@@ -170,7 +165,7 @@ add_map_list_(end_of_file,_,M,N,T,EM,MN) :- !,
         format('~w/~w map(s) has been successfully added.\n\n',[N1,T1]),
         reverse(EM1,EM2),
         format('Maps below contain some mistakes:\n\n'),
-        printStringList(EM2,'')
+        print_wrong_maps(EM2)
         ) ; format('All ~w map(s) has been successfully added.\n',[T1])
     ).
 add_map_list_(S,In,M,N,T,EM,MN) :-
@@ -190,7 +185,7 @@ add_map_list_(S,In,M,N,T,EM,MN) :-
         (var(T1) -> T1 is T+1 ; true),
         L=[]
         )
-    ; %potential problems with construction if-then-else
+    ;
         ( delete_all_except(C,['#',' ','-','$','.','@','*','+'],C1),
         remove_trailing_spaces(C1,C2),
         ( C2\==[] -> L=[C2|M] ; L=M),

@@ -1,9 +1,9 @@
 /*
 :- module(test,
 [
-    testSol/2,
-    test_sol/2,
-    q_test_sol/1
+    load_sol/1, % +Map
+    save_sol/1, % +Map
+    test_sol/1  % +Map
 ]).
 */
 load_sol(Map) :- 
