@@ -1,13 +1,13 @@
 /*
 :- module(draw,
     [
-        draw_map/1,
+        print_map/1,
         printPass/1,
         printList/3,
         printStringList/3
     ]).
 */   
-draw_map(Map) :- load_map(Map), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
+print_map(Map) :- load_map(Map), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
     
 checkMaxX(X) :- right(_,X1-_), X1>X.
 getMaxX(X) :- right(_,X-_), \+ checkMaxX(X), !.
