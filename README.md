@@ -136,22 +136,33 @@ true.
 ### Solve map by DFS (limited depth & no cycles)
 
 ```prolog
-solve_map/1 % +Map
+solve_dfs/1 % +Map
 
-?- solve_map('1.pl').
-sol found
-r r r r u l pL u pL pD u pU l pD pD u u u pR pR
-CPU time = 16 msec
+?- solve_dfs('maps/696/Level 1.pl').
+Squares: 17
+Boxes: 3
+new sol -- found by <dfs>
+Pass: rDDLruulDlDDlddrUUldrrrUUUllDDldRluruurrdLrullDDlddrUUUrrddLruulldlddrU
+
+m/p: 71/22
+CPU time = 2090 msec
 true.
 ```
 ## Informative search
 ### Solve map by `A*`
 
 ```prolog
-solve_map2/1 % +Map
+solve_Astar/1 % +Map
 
-?- solve_map2('1.pl').
-Pass: r, r, r, u, pL, u, pL, pU, l, u, pR, pR, l, d, l, pD, pD, u, r, pD
-true ;
-false.
+?- solve_Astar('maps/696/Level 1.pl').
+Squares: 17
+Boxes: 3
+new sol -- found by <a-star>
+Pass: rDDLruulDlDDlddrUrrUUUlldDldRuuurrdLulDDlddrUUUrrddLruulldlddrU
+
+Closed vertices: 951
+Max open vertices: 60
+m/p: 63/20
+CPU time = 156 msec
+true.
 ```

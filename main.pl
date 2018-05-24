@@ -27,13 +27,13 @@
 :- use_module(library(dialect/sicstus/timeout), [ time_out/3 ]).
 /*
 :- use_module(sokoban).
-:- use_module(draw).
+:- use_module(print).
 :- use_module(test).
 :- use_module(help).
 :- use_module(convert).
 */
 :- consult('sokoban.pl').
-:- consult('draw.pl').
+:- consult('print.pl').
 :- consult('test.pl').
 :- consult('help.pl').
 :- consult('convert.pl').

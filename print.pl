@@ -7,6 +7,7 @@
         printStringList/3
     ]).
 */   
+print_map :- map_path(Path), format('Path: \'~w\'~n',[Path]), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
 print_map(Map) :- load_map(Map), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
     
 checkMaxX(X) :- right(_,X1-_), X1>X.

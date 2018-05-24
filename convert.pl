@@ -5,54 +5,19 @@
         remove_trailing_spaces/2, % +ListI, -ListO
         delete_all_except/3,      % +ListI, +ExceptList, -ListO
         delete_all/3,             % +ListI, +DelList, -ListO
-        erase_map/0                   % retractall: top, right, target, initial
+        erase_map/0               % retractall: top, right, target, initial
     ]).
 */
-%=============================================================================
-%===================================COMMENTS==================================
-%=============================================================================
-/*
-“#” is a wall
-space or “-” is an empty passage
-“.” is a target square
-“$” is a red bead in a passage
-“@” is a blue bead in a passage
-“*” is a red bead on a target square
-“+” is a blue bead on a target square
-Any other line separates levels
-
-======================
-при добалении карт, выводить сообщения аля: "такого файла не существует" и если не удалось добавить карту, то какая именно ошибка возникла
-
-добавлять с перезаписью или нет
-==================
-reachable_by_sokoban возвращать не кол-во шагов, а сам путь
-
-1. расстояние до цели использовать при выборе новой клетки, и если одна не подходитЮ более выгодная, то выбрать другую
-
-почему redefine static procedure?!
-!!! заменить consult на ensure_loaded !!! make\0
-namespaces (:user) как вообще они работают: что за ?? с help:help(X) ~ helpfgdgdf:help(X)
-
-запретить перемещения бочек в тупики
-*/
-%=============================================================================
-%=====================================TEST====================================
-%=============================================================================
-
-
-
-%=============================================================================
-%=====================================CODE====================================
-%=============================================================================
 
 load_map(Map) :- 
     erase_map,
-    atom_concat('maps/',Map,Fmap),
-    exists_file(Fmap) -> consult(Fmap).
+    assert(map_path(Map)),
+    exists_file(Map) -> consult(Map).
 
 add_maps([]).
-add_maps([H|T]) :- (atom_concat(_,'.',H); atom_concat(_,'..',H)), !, add_maps(T).
+add_maps([H|T]) :- 
+    (atom_concat(_,'.',H); atom_concat(_,'..',H)), !,
+    add_maps(T).
 add_maps([H|T]) :- 
     working_directory(CWD,CWD),
     atom_concat(CWD,'levels/',LD),
@@ -72,7 +37,8 @@ add_maps :-
     atom_concat(CWD,'levels/',L),
     exists_directory(L),
     directory_files(L,Files), 
-    add_maps(Files).
+    findall(Y,(member(F,Files),atom_concat('levels/',F,Y)),Out),
+    add_maps(Out).
 
 add_other([],_,_).
 add_other([H1,H2|T],X,Y) :-
@@ -93,7 +59,10 @@ add_top([H1|T1],[H2|T2],Y,X) :-
     add_top(T1,T2,Y,X1).
 
 convert(_,[],_).
-convert(E,[H|T],Y) :- add_other(H,0,Y), add_top(E,H,Y,0), Y1 is Y-1, convert(H,T,Y1).
+convert(E,[H|T],Y) :- 
+    add_other(H,0,Y),
+    add_top(E,H,Y,0),
+    Y1 is Y-1, convert(H,T,Y1).
 
 add_map(MapName,[H|T]) :- 
     atom_concat(MapName,'.pl',MN),
@@ -104,12 +73,14 @@ add_map(MapName,[H|T]) :-
     solvable(add) -> (tell(MN), write_map, told).
 
 del_undounded_nodes([]).
-del_undounded_nodes([H|T]) :- ( retract(top(H,_)) ; retract(right(H,_)) ; true ), del_undounded_nodes(T). 
+del_undounded_nodes([H|T]) :- 
+    ( retract(top(H,_)) ; retract(right(H,_)) ; true ),
+    del_undounded_nodes(T). 
 
 solvable(load) :-
     initial(state(agent(S),boxes(B))),
     \+ is_list(S),
-    dfs(S,L),
+    component_nodes(S,L),
     target(T),
     subset(T,L), subset(B,L), 
     length(T,Size), length(B,Size),
@@ -120,7 +91,7 @@ solvable(load) :-
 solvable(add) :-
     aggregate_all(count, agent_(_), 1),
     agent_(S),
-    dfs(S,L),
+    component_nodes(S,L),
     findall(X,target_(X),T), 
     findall(Y,box_(Y),B), 
     subset(T,L), subset(B,L),
@@ -132,16 +103,15 @@ solvable(add) :-
     del_undounded_nodes(G).
   
 add_map_list(File) :- 
-    atom_concat('levels/',File,Path), 
-    \+ exists_file(Path), !, 
-    format('file ~w doesn`t exists~n',[File]).
+    \+ exists_file(File), !, 
+    format('File \'~w\' doesn`t exist.~n',[File]).
 add_map_list(File) :-
-    atom_concat('levels/',File,Path),
-    access_file(Path,read) ->
+    atom_concat('levels/',Path,File),
+    access_file(File,read) ->
     (
-    catch(open(Path, read, In), E, ( print_message(error, E), fail )),    
-    file_directory_name(File,Dir),
-    file_base_name(Path,Base),
+    catch(open(File, read, In), E, ( print_message(error, E), fail )),    
+    file_directory_name(Path,Dir),
+    file_base_name(File,Base),
     file_name_extension(Name,_,Base),
     working_directory(CWD,CWD),
     atom_concat(Dir,'/',Dir2),
@@ -198,24 +168,24 @@ add_map_list_(S,In,M,N,T,EM,MN) :-
     read_line_to_string(In,S_),
     add_map_list_(S_,In,L,N1,T1,EM1,MN1).
    
-dfs(Root,Visited) :-
-    dfs([Root],[],Visited).
-dfs([],Visited,Visited).
-dfs([H|T],Visited,V) :-
-    member(H,Visited), !,
-    dfs(T,Visited,V).
-dfs([H|T],Visited,V) :-
+component_nodes(Root,Closed) :-
+    component_nodes([Root],[],Closed).
+component_nodes([],Closed,Closed).
+component_nodes([H|T],Closed,V) :-
+    member(H,Closed), !,
+    component_nodes(T,Closed,V).
+component_nodes([H|T],Closed,V) :-
     ( top(H,Top) -> L=[Top] ; L=[]),
     ( top(Bot,H) -> L1=[Bot|L] ; L1=L),
     ( right(Left,H) -> L2=[Left|L1] ; L2=L1),
     ( right(H,Right) -> L3=[Right|L2] ; L3=L2),
-    append(L3,T,ToVisit),
-    dfs(ToVisit,[H|Visited],V).
-   
+    append(L3,T,Open),
+    component_nodes(Open,[H|Closed],V).
+ 
+remove_trailing_spaces([H|T],R) :-
+    remove_trailing_spaces(T,T1),
+    ((T1==[], H\==' ' ; T1\==[]) -> R=[H|T1] ; R=[]).
 remove_trailing_spaces([],[]).
-remove_trailing_spaces([H|T],[H|Out]) :- remove_trailing_spaces(T,Out), Out\==[], !.
-remove_trailing_spaces([H|T],[H|Out]) :- H\==' ', H\=='-', !, remove_trailing_spaces(T,Out).
-remove_trailing_spaces([_|T],Out) :- remove_trailing_spaces(T,Out).
 
 delete_all([],_,[]).
 delete_all([H|T],L,Result) :- member(H,L), !, delete_all(T,L,Result).
@@ -226,6 +196,7 @@ delete_all_except([H|T],L,[H|Result]) :- member(H,L), !, delete_all_except(T,L,R
 delete_all_except([_|T],L,Result) :- delete_all_except(T,L,Result).    
 
 erase_map :-
+    retractall(map_path(_)),
     retractall(initial(_)),
     retractall(target(_)),
     retractall(top(_,_)),

@@ -7,7 +7,6 @@
 */
 
 final(state(_, boxes(B))) :- target(T), eq_lists(T,B).
-%final(state(_, boxes(B))) :- target(T), subset(B,T).
 
 eq_lists(L1,L2) :- subset(L1,L2), subset(L2,L1).
  
@@ -22,9 +21,10 @@ move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "u") :- top
 move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "d") :- top(P1,P0), \+ member(P1,Boxes).
 
 
-blind_search(A,state(_, boxes(B)),I,N,_,[P]) :- move(A,state(_, boxes(B1)),P), eq_lists(B,B1), !.
-blind_search(_,_,I,N,_,_) :- I >= N, !, fail.
-blind_search(A,C,I,N,H,[P|Pass]) :- move(A,B,P), \+ member(B,H), I1 is I+1, blind_search(B,C,I1,N,[B|H],Pass).
+dfs(Start,Finish,N,Path,Info) :- dfs(Start,Finish,0,N,Start,Path,Info).
+dfs(A,state(_, boxes(B)),I,N,_,[P],_) :- move(A,state(_, boxes(B1)),P), eq_lists(B,B1), !.
+dfs(_,_,I,N,_,_,_) :- I >= N, !, fail.
+dfs(A,C,I,N,H,[P|Pass],_) :- move(A,B,P), \+ member(B,H), I1 is I+1, dfs(B,C,I1,N,[B|H],Pass,_).
 
 banned(_,X-Y,Boxes) :- member(X-Y,Boxes), !.
 banned(l,X-Y,Boxes) :- target(T), \+ member(X-Y,T), Xl is X-1, Yd is Y-1, Yu is Y+1, deadlock(Xl-Y, Xl-Yd, Xl-Yu, X-Yu, X-Yd, Boxes).
@@ -37,11 +37,11 @@ target_place(P) :- target(T), member(P,T).
 
 blocked(X-Y,Boxes) :- wall(X-Y) ; member(X-Y,Boxes).
 
-%добавить проверку на попадание в стиации:
-%1. передвижение ящика к стенке в положение не являющиеся конечным и слева и справа от новой позиции нет конечным позиций + ящик нельзя сдвинуть вперед, относительно текущего движения больше никак.
-%2. проверять позиции которые однозначно приводят к тупикам.
+metric(P1,P2,D) :- pythagorean(P1,P2,D).
 
-distance(X1-Y1,X2-Y2,D) :- D is sqrt((X2-X1)^2 + (Y2-Y1)^2).
+pythagorean(X1-Y1,X2-Y2,D) :- D is sqrt((X2-X1)^2 + (Y2-Y1)^2).
+manhattan(X1-Y1,X2-Y2,D) :- D is abs(X2-X1) + abs(Y2-Y1).
+goal_pull(X1-Y1,X2-Y2,D). %assertz(goal_pull(P1,P2,D))
 
 %f(R) :- initial(state(_,boxes(Boxes))), find_shortest_total_way(Boxes,R). %test func
 
@@ -79,7 +79,7 @@ get_xy_sum([X-Y|T],XC1-XC1) :-
 asserta(start(P1)).
 asserta(goal(P2)).
 asserta(next(V,V1,1,_) :- move(V,V1)).
-asserta(h(P1,_,Val) :- goal(P2), distance(P1,P2,Val)).
+asserta(h(P1,_,Val) :- goal(P2), pythagorean(P1,P2,Val)).
 
 start(Start), 'A*'(Start,Sol,_), length(Sol,L)
 */ 
@@ -90,21 +90,6 @@ insert_in_ascending_list(X, [Y|Tail], [X,Y|Tail]) :-
 insert_in_ascending_list(X, [Y|T0], [Y|Tail]) :-
     insert_in_ascending_list(X, T0, Tail).    
 */ 
-/*
-'A*'(Start, Sol) :- h(Start, _, F), a_star( [ v( Start, noparent, 0, F) ], [ ] , Sol ).
-
-a_star( Opens, Closes, Sol ) :- 
-	Opens = [v(V, Prev ,_,_)|_], goal(V), !,
-	build_path(Prev, Closes, [V], Sol).
-a_star( [v(V,Prev,G,F)|Opens], Closes, Sol ) :-
-	findall( v(V1,V,G1,F1), (next(V,V1,C,D) ,
-	not( member(v(V1,_,_,_), Opens) ),
-	not( member(V1-_, Closes) ), G1 is G+C,
-	h(V1,D,H1), F1 is G1+H1), Childs ),
-	ord_insert_list( Childs, Opens, NewOpens ),
-	a_star( NewOpens, [V-Prev|Closes], Sol ).
-a_star([],_,fail).
-*/
 %%%insert_pair_in_ascending_list_by_sec_el_as_key
 insert(P, V, [], [], [P], [V]).
 insert(P0, V0, [P|Tp], [V|Tv], [P0,P|Tp], [V0,V|Tv]) :-
@@ -116,7 +101,7 @@ get_min_way_cost(_,[],[],[]).
 get_min_way_cost(Box,[Target|T],PosNew,ValNew) :-     
     %aSearch( Box,Target,P ),
     %length(P,V),
-    distance(Box,Target,V),
+    pythagorean(Box,Target,V),
     get_min_way_cost(Box,T,Pos,Val), !,
     insert(Target,V,Pos,Val,PosNew,ValNew).
     
@@ -126,25 +111,23 @@ get_summary_way_cost([Box|Boxes],TB,TotalCost) :-
     get_summary_way_cost(Boxes,TB1,PrevCost), !,
     TotalCost is PrevCost + Cost.
     
-evFunc(state(agent(A), boxes(Boxes)),P,Val1) :- 
+evFunc(state(agent(Agent), boxes(Boxes)),Heuristic) :- 
+    target(Targets),
+    /*
+        %count_pushes(Path,Pushes),
+        %unmatches(Boxes,Targets,N),
+        %get_circle_center(Boxes,C1),
+        %get_circle_center(Targets,C2),
+        %find_shortest_total_way(Boxes,Cost), !, %от каждой коробки до каждой целевой позиции %работает криво из-за reachable_by_sokoban в том числе
+        %по сути ^ тоже самое что и goal pull distance; также на эту роль претендует opt_path - что-бы не сорить предикатами - берем уже готовый A-star
+        %pythagorean(C1,C2,D),
+        %pythagorean(Agent,C1,AB),
+    */
     boxes_in_pos(Boxes,N),
-    get_circle_center(Boxes,C1),
-    target(T),
-    get_circle_center(T,C2),
-    distance(C1,C2,D),
-    distance(A,C1,D1),
     length(Boxes,Cnt),
-    %count_pushes(Path,Pushes),
-    get_summary_way_cost(Boxes,T,V),
-    Val is (Cnt / (N+1) + D + V + D1) ** 3,
-    ((P == "L" ; P == "R" ; P == "U" ; P == "D") -> Val1 = Val ; Val1 is Val - 0).
-/*
-evFunc(state(agent(P), boxes(Boxes)),Val) :- 
-    target(B),
-    unmatches(Boxes,B,N),
-    find_shortest_total_way(Boxes,Cost), %от каждой коробки до каждой целевой позиции
-    Val is N+Cost.
-*/
+    get_summary_way_cost(Boxes,Targets,Assign),
+    Heuristic is (Cnt - N + Assign).
+    
 unmatches(B,TB,N) :- boxes_in_pos(B,N1), length(TB,T), N is T-N1.
     
 boxes_in_pos([],0) :- !.
@@ -179,85 +162,103 @@ coord(C,[[_|T]|TT],X-Y) :- coord(C,[T|TT],X-Y).
 coord(C,[[]|TT],X-Y) :- coord(C,TT,X-Y).
 */
 %***********************************************************************************
-	
-%'A*'(Sol) :- start(Start), 'A*'(Start, Sol, OpenNum-ClosedNum), nl, Vnum is OpenNum+ClosedNum, write( ('перебрано'-Vnum, 'из них раскрыто'-ClosedNum) ).
-/*
-solve_map(Map) :- 
-    load_map(Map),
-    solvable(load),
-    statistics(runtime,_), 
-    ( (load_sol(Map), test_sol(Map)) -> true ; 
-        %(initial(A), final(C), N=20, blind_search(A,C,0,N,A,Path)) 
-        aSearch(Path)
-    ), !, 
-    (var(Path) -> 
-        write('sol found\nPass: '),
-        solution(Path)  
-    ; 
-        write('new sol\nPass: '),
-        retractall(solution(_)), 
-        assert(solution(Path)),
-        save_sol(Map)
+
+solve_Astar(Map) :-
+    Algo = a-star,
+    Params = (
+        pull, % Distance_Metric (pull, manhattan, pythagorean)
+        closest, % Assignment_Algorithm (hungarian, greedy, closest)
+        once % Assignment_Recalculation (once, high)
     ),
-    printList(Path,'',' '), nl,
-    length(Path,Moves),
-    count_pushes(Path,Pushes),
-    format('m/p: ~w/~w~n',[Moves,Pushes]),
-    statistics(runtime, [_,T]), format('CPU time = ~w msec',[T]).
-*/    
-solve_map(Map) :- 
+    NewSol = true,
+    solve_map(Map,Algo,Params,NewSol).
+    
+solve_dfs(Map) :-
+    Algo = dfs,
+    Params = (empty),
+    NewSol = true,
+    solve_map(Map,Algo,Params,NewSol).
+	
+solve(a-star,(Metric,Assign_Algo,Assign_Recalc),Path,Info) :- aSearch(Path,Info).
+solve(dfs,Params,Path,Info) :- (initial(A), final(C), N=84, dfs(A,C,0,N,A,Path,Info)).
+
+print_info(a-star,ClosedNum-Frontier) :- 
+    format( 'Closed vertices: ~w~nMax open vertices: ~w~n',[ClosedNum,Frontier] ).
+print_info(dfs,Info) :-
+    format('',[]).
+   
+solve_map(Map,Algo,Params,NewSol) :- 
     load_map(Map),
+    initial(state(agent(Agent),boxes(Boxes))), length(Boxes,Tlen),
+    component_nodes(Agent,RV), length(RV,RVlen),
+    format('Squares: ~w~nBoxes: ~w~n',[RVlen,Tlen]),
     (solvable(load) ->
     (statistics(runtime,_), 
-    (( (load_sol(Map), test_sol(Map)) -> true ; 
-        %(initial(A), final(C), N=20, blind_search(A,C,0,N,A,Path)) 
-        aSearch(Path)
-    ) -> 
+    (( (test_sol(Map), not(NewSol)) -> true ; solve(Algo,Params,Path,Info) ) -> 
     (!, (var(Path) -> 
         write('sol found\nPass: '),
         solution(Path)  
     ; 
-        write('new sol\nPass: '),
+        format('new sol -- found by <~w>\nPass: ', [Algo]),
         retractall(solution(_)), 
         assert(solution(Path)),
         save_sol(Map)
     ),
-    printList(Path,'',' '), nl,
+    printList(Path,'',''), nl, nl,
+    print_info(Algo,Info),
     length(Path,Moves),
     count_pushes(Path,Pushes),
     format('m/p: ~w/~w~n',[Moves,Pushes]),
     statistics(runtime, [_,T]), format('CPU time = ~w msec',[T])) ; format('Unsolvable.'))) ; format('Unsolvable: simple check.')).
    
-aSearch(P) :- start(Start), 'A*'(Start,Sol,_), steps(Sol,P).
-
 /***************************************************************************/
+
+test_opt_path(Path) :- 
+    From = state(agent(1-1),boxes([2-2])),
+    To = state(agent(2-2),boxes([2-3])),
+    opt_path(From,To,Path).
+
+opt_path(From,To,Path) :- 
+    To = state(agent(A), boxes(B)),
+    asserta((final(state(agent(A),boxes(Boxes))) :- eq_lists(B,Boxes))),
+    asserta(target(B) :- !),
+    asserta((next(From,To,1) :- move(From,To,Move), member(Move,["u","d","r","l"]))),
+    'A*'(From,Sol,_),
+    retract(final/1),
+    retract(target/1),
+    retract(next/3),
+    steps(Sol,Path).
 
 steps([X,Y|T],[P|NextPath]) :- move(X,Y,P), steps([Y|T],NextPath).
 steps([_],[]).
 steps([],[]).
 
-'A*'(Start, Sol, OpenNum-ClosedNum) :- h(Start, _, F), a_star( [ v( Start, noparent, 0, F) ], [ ] , Sol-(OpenNum-ClosedNum) ).
-/*%DELETE
-a_star( [v(V,Prev,G,F)|Opens], Closes, Sol-(_-_) ) :- G == 25, !,
-	build_path(Prev, Closes, [V], Sol).
-%DELETE*/
-a_star( Opens, Closes, Sol-(OpenNum-ClosedNum) ) :- 
-	Opens = [v(V, Prev ,_,_)|_], goal(V), !,
-	build_path(Prev, Closes, [V], Sol), 
-	length(Opens, OpenNum), length(Closes, ClosedNum).
+aSearch(P,Info) :- 
+    start(Start),
+    'A*'(Start, Sol, Info),
+    steps(Sol,P).
 
-a_star( [v(V,Prev,G,F)|Opens], Closes, Sol ) :-
-	findall( v(V1,V,G1,F1), (next(V,V1,C,D) ,
+'A*'(Start, Sol, ClosedNum-Frontier) :- h(Start, F), a_star( [ v( Start, noparent, 0, F) ], [] , Sol-(ClosedNum-Frontier) ).
+
+a_star( Opens, Closed, Sol-(ClosedNum-0) ) :- 
+	Opens = [v(V, Prev ,_,_)|_], goal(V), !,
+	build_path(Prev, Closed, [V], Sol), 
+	length(Closed, ClosedNum).
+
+a_star( [v(V,Prev,G,F)|Opens], Closed, Sol-(ClosedNum-FrontierMax) ) :-
+	findall( v(V1,V,G1,F1), (next(V,V1,C) ,
 	not( member(v(V1,_,_,_), Opens) ),
-	not( member(V1-_, Closes) ), G1 is G+C,
-	h(V1,D,H1), F1 is G1+H1, format('~w ~w~n',[G1,H1]), nl), Childs),
+	not( member(V1-_, Closed) ), G1 is G+C,
+	h(V1,H1), F1 is G1+H1), Childs),
 	ord_insert_list( Childs, Opens, NewOpens ),
-	a_star( NewOpens, [V-Prev|Closes], Sol ).
+	a_star( NewOpens, [V-Prev|Closed], Sol-(ClosedNum-FrontierPrevMax) ),
+    length(NewOpens, NewOpensNum),
+    (NewOpensNum > FrontierPrevMax -> FrontierMax = NewOpensNum ; FrontierMax = FrontierPrevMax).
 
 a_star([],_,fail).
 
 build_path( noparent ,_, Path, Path ).
-build_path( V, Closes, Path0, Path) :- member(V-Parent, Closes), build_path( Parent, Closes, [V|Path0], Path ).
+build_path( V, Closed, Path0, Path) :- member(V-Parent, Closed), build_path( Parent, Closed, [V|Path0], Path ).
 
 ord_insert_list( [V|T1], L2, L3 ) :- ord_insert(V,L2,L22), ord_insert_list(T1,L22,L3).
 ord_insert_list([],L3,L3).
@@ -266,12 +267,12 @@ ord_insert(V,[],[V]).
 ord_insert(V,[H|T],[V,H|T]) :- V=v(_,_,_,F1), H=v(_,_,_,F2), F1=<F2, !.
 ord_insert(V,[H|T],[H|T2]) :- ord_insert(V,T,T2).
 
-%-- настройка на предметную область :
+%-- настройка на предметную область:
 start(V) :- initial(V).
 goal(V) :- final(V).
-next(V,V1,1,AddData) :- move(V,V1,AddData).
-%h(Pos,_,0).
-h(Pos,AddData,Val) :- evFunc(Pos,AddData,Val). % выбор оценочной функции для поиска
+next(From,To,Cost) :- move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1).
+%h(Pos,0).
+h(Pos,Val) :- evFunc(Pos,Val). % выбор оценочной функции для поиска
 
 /***************************************************************************/
 
@@ -280,8 +281,6 @@ neib(Loc1,Loc2,down):- top(Loc2,Loc1).
 neib(Loc1,Loc2,right):- right(Loc1,Loc2).
 neib(Loc1,Loc2,left):- right(Loc2,Loc1).
 
-r_b_s([pair(Loc3,_)|_],Loc2,History,BoxLocs,N1) :- reachable_by_sokoban(Loc3,Loc2,[Loc3|History],BoxLocs,N), N1 is N+1, !.
-r_b_s([_|T],Loc2,History,BoxLocs,N) :- r_b_s(T,Loc2,History,BoxLocs,N).
 /*
 reachable_by_sokoban(Loc1,Loc2,_,_,0) :- neib(Loc1,Loc2,_), !. %можно использовать функцию расстояния
 reachable_by_sokoban(Loc1,Loc2,History,BoxLocs,N):-
@@ -291,20 +290,38 @@ reachable_by_sokoban(Loc1,Loc2,History,BoxLocs,N):-
     reachable_by_sokoban(Loc3,Loc2,[Loc3|History],BoxLocs,N1), N is N1+1.
 */
 
-reachable_by_sokoban(Loc,Loc,H,_,0) :- !.%reverse(H,H1), printList(H1,'','   '), !. %можно использовать функцию расстояния
+r_b_s([pair(Loc3,_)|_],Loc2,History,BoxLocs,N1) :- reachable_by_sokoban(Loc3,Loc2,[Loc3|History],BoxLocs,N), N1 is N+1.
+r_b_s([_|T],Loc2,History,BoxLocs,N) :- r_b_s(T,Loc2,History,BoxLocs,N).
+
+reachable_by_sokoban(Loc,Loc,H,_,0) :- !.%, reverse(H,H1), printList(H1,'','   '). %можно использовать функцию расстояния
 reachable_by_sokoban(Loc1,Loc2,History,BoxLocs,N):- %Передавать в  эту функцию  Loc1 при запуске & при желании можно вытянуть сам кратчайший путь
     bagof(
         pair(Loc3,D), (
         neib(Loc1,Loc3,_),
         \+ member(Loc3,BoxLocs),
         \+ member(Loc3,History),
-        distance(Loc3,Loc2,D)
+        pythagorean(Loc3,Loc2,D)
         ),
         Cases
     ),
     sort(2,@=<,Cases,Sorted), %printList(Sorted), nl,
     r_b_s(Sorted,Loc2,History,BoxLocs,N).
-    
+
+find_all_push_moves(Root,Boxes,PushMoves) :-
+    find_all_push_moves([Root],Boxes,[],PushMoves).
+find_all_push_moves([],_,_,[]).
+find_all_push_moves([V|Open],Boxes,History,AllPM) :-
+    findall(Vm, (move(state(agent(V), boxes(Boxes)), state(agent(Vm), _), M), member(M,["d","u","l","r"]), \+ member(Vm,History)), Expanded),
+    append(Open,Expanded,NewOpen),
+    append([V|Expanded],History,NewHistory),
+    find_all_push_moves(NewOpen,Boxes,NewHistory,OtherPM),
+    findall(edge(Vp,M), (move(state(agent(V), boxes(Boxes)), Vp, M), member(M,["D","U","L","R"])), NewPM),
+    append(OtherPM,NewPM,AllPM).
+ 
+pr_queue_push(V,[],[V]).
+pr_queue_push(V,[H|T],[V,H|T]) :- V=(F1,_), H=(F2,_), F1=<F2, !.
+pr_queue_push(V,[H|T],[H|T2]) :- pr_queue_push(V,T,T2).
+
 /***************************************************************************/
 /* Unit tests                                                              */
 /***************************************************************************/
@@ -313,99 +330,4 @@ reachable_by_sokoban(Loc1,Loc2,History,BoxLocs,N):- %Передавать в  э
 %test(smth) :- smth.
 :- end_tests(sokoban).
 %:- run_tests.
-*/
-/***************************************************************************/
-/* OTHER                                                                   */
-/***************************************************************************/
-
-/* A corner is a square which has at most one neighbour square in vertical */
-/* and one in horizontal. It is defined using the counter-rule noncorner.  */
-corner(X) :- \+ noncorner(X).
-noncorner(X) :- top(_,X),top(X,_).
-noncorner(X) :- right(_,X),right(X,_).
-
-
-/* Some position for boxes must be avoided (unless they are solutions)     */
-/* because the Sokoban won't be able to move them further:                 */
-/*  - corners: the Sokoban can't move a box which is placed at a corner.   */
-stuck(X) :-
-    \+ solution(X),
-    corner(X).
-
-/*  - horizontally adjacent boxes can only be moved up or down... if there */
-/*    are empty squares for the Sokoban to push and for the boxes to move. */
-stuck(X, Y) :-
-    (right(X,Y); right(Y,X)),
-    (\+ solution(X); \+ solution(Y)),
-    (\+ top(X,_); \+ top(_,X)),
-    (\+ top(Y,_); \+ top(_,Y)).
-
-/*  - vertically adjacent boxes can only be moved right or left... if there*/
-/*    are empty squares for the Sokoban to push and for the boxes to move. */
-stuck(X, Y) :-
-    (top(X,Y); top(Y,X)),
-    (\+ solution(X); \+ solution(Y)),
-    (\+ right(X,_); \+ right(_,X)),
-    (\+ right(Y,_); \+ right(_,Y)).
-
-/* The Sokoban can move to any empty position in the board, but cannot go  */
-/* through boxes.                                                          */
-can_reach(P1, P1, _Boxes, _Visited).
-can_reach(P1, P2, Boxes, _Visited) :-
-    neib(P1, P2, _),
-    \+ member(P2, Boxes).
-can_reach(P1, P2, Boxes, Visited) :-
-    neib(P1, P3, _),
-    P3 \== P2,
-    \+ member(P3, Visited),
-    \+ member(P3, Boxes),
-    can_reach(P3, P2, Boxes, [P3|Visited]).
-
-/* A good place to move a box is one that:                                 */
-/*  - is not already occupied by a box.                                    */
-/*  - is not one of the positions to avoid regarding the board and boxes.  */
-good_move(X, Boxes) :-
-    \+ member(X, Boxes),
-    \+ stuck(X),
-    foreach(member(Box, Boxes), \+ stuck(X, Box)).
-
-/* Selection of a good movement given a state:                             */
-/*  - any valid movement for every box                                     */
-/*  - the Sokoban must be able to access the push position                 */
-movement(state(Sokoban, Boxes), move(Box, Dir)) :-
-    select(Box, Boxes, BoxesRemain),
-    neib(Box, NextLoc, Dir),
-    good_move(NextLoc, BoxesRemain),
-    neib(PushPosition, Box, Dir),
-    /*can_reach(Sokoban, PushPosition, Boxes, []),*/ /* Enable this rule to consider Sokoban movement constraint */
-    \+ member(PushPosition, Boxes).
-
-
-update(state(_Sokoban, Boxes), move(Box, Dir), state(NewSokoban, NewBoxes)) :-
-    NewSokoban = Box,
-    subtract(Boxes, [Box], TempList),
-    neib(Box, NewPosition, Dir),
-    append(TempList, [NewPosition], NewBoxes).
-    
-solve_dfs(Problem, State, _History, []) :-
-    final_state(Problem, State).
-
-/* If not, we have to explore new states                                   */
-solve_dfs(Problem, State, History, [Move|Moves]) :-
-    movement(State, Move),
-    update(State, Move, NewState),
-    \+ member(NewState, History),   /* No quiero ciclos en el grafo de búsqueda */
-    solve_dfs(Problem, NewState, [NewState|History], Moves).
-
-/* Actually solve the problem                                              */
-solve_problem(Problem, Solution) :-
-    format('=============~n'),
-    format('|| Problem: ~w~n', Problem),
-    format('=============~n'),
-    initial_state(Problem, Initial),
-    format('Initial state: ~w~n', Initial),
-    solve_dfs(Problem, Initial, [Initial], Solution).    
-    
-/***************************************************************************/
-/*                                                                OTHER    */
-/***************************************************************************/    
+*/    

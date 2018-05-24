@@ -8,7 +8,8 @@
 */
 load_sol(Map) :- 
     retractall(solution(_)), 
-    atom_concat('solutions/',Map,Sol),
+    atom_concat('maps/',Path,Map),
+    atom_concat('solutions/',Path,Sol),
     exists_file(Sol) -> consult(Sol).
     
 save_sol(Map) :- 
@@ -16,7 +17,8 @@ save_sol(Map) :-
     aggregate_all(count, solution(_), Count), Count==1,
     working_directory(CWD,CWD),
     file_base_name(Map,Base),
-    file_directory_name(Map,Dir),
+    atom_concat('maps/',Path,Map),
+    file_directory_name(Path,Dir),
     atom_concat(Dir,'/',Dir1),
     atom_concat('solutions/',Dir1,Sol),
     atom_concat(CWD,Sol,NWD),
