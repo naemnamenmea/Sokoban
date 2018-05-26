@@ -21,6 +21,7 @@
                                 subset/2,
                                 subtract/3,
                                 min_list/2,
+                                max_list/2,
                                 select/3,
                                 list_to_set/2 ]).
 :- use_module(library(plunit), [ begin_tests/1,

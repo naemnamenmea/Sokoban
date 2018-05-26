@@ -158,11 +158,34 @@ Squares: 17
 Boxes: 3
 new sol -- found by <a-star>
 Pass: rDDLruulDlDDlddrUrrUUUlldDldRuuurrdLulDDlddrUUUrrddLruulldlddrU
-
 Closed vertices: 951
 Max open vertices: 60
 m/p: 63/20
 CPU time = 156 msec
+true.
+
+
+
+?- solve_map('maps/696/Level 10.pl',a-star,(_,_,_,":)"),true).
+Squares: 20
+Boxes: 3
+new sol -- found by <a-star>
+Pass: URUUlDrddlluRdrUluurrrddLLUluRdddlUrrruuuullDDDuuurrddddlLuuRldddlluRdrUrruUlllDurrrUdddllUluRRldddlluRdrUrruUddllUluRR
+Closed vertices: 9962
+Max open vertices: 202
+m/p: 119/31
+CPU time = 11326 msec
+true.
+
+?- solve_map('maps/696/Level 10.pl',a-star,(_,_,_,push_only),true).
+Squares: 20
+Boxes: 3
+new sol -- found by <a-star>
+Pass: URUUlDrddlluRdrUluurrrddLLUluRdddlUrrruuuullDDDuuurrddddlLuuRldddlluRdrUrruUlllDurrrUdddllUluRRlddrruUddlldlluRdrUUluRR
+Closed vertices: 903
+Max open vertices: 87
+m/p: 119/31
+CPU time = 437 msec
 true.
 ```
 

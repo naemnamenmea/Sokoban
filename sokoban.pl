@@ -213,7 +213,7 @@ solve_map(Map,Algo,Params,NewSol) :-
         assert(solution(Path)),
         save_sol(Map)
     ),
-    printList(Path,'',''), nl, nl,
+    printList(Path,'',''), nl,
     (NewSol -> print_info(Algo,Info) ; true),
     length(Path,Moves),
     count_pushes(Path,Pushes),
@@ -237,16 +237,19 @@ opt_path(From,To,Path) :-
     retract(target/1),
     retract(next/3),
     steps2path(Sol,Path).
-    
-jumps2path([X,Y|T],NNP) :- 
+
+find_static_pass(X,Y,Path) :-
     aStar_clear,
     assert(goal(Y)),
     assert(next(From,To,Cost) :- (move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1))),
     assert(h(Pos,Val) :- evFunc(Pos,Val)), % выбор оценочной функции для поиска
-        'A*'(X, Sol, _),
-        steps2path(Sol,Path),
+    'A*'(X, Sol, _),
+    steps2path(Sol,Path).
+    
+jumps2path([X,Y|T],Pass) :- 
+    find_static_pass(X,Y,Path),
     jumps2path([Y|T],NextPath),
-    append(Path,NextPath,NNP).
+    append(Path,NextPath,Pass).
 jumps2path([_],[]).
 jumps2path([],[]).
 

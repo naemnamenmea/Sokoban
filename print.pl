@@ -7,20 +7,21 @@
         printStringList/3
     ]).
 */   
-print_map :- map_path(Path), format('Path: \'~w\'~n',[Path]), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
-print_map(Map) :- load_map(Map), getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
+print_map :- map_path(Path), format('Path: \'~w\'~n',[Path]), print_map_.
+print_map(Map) :- load_map(Map), print_map_.
+print_map_ :- getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
     
-checkMaxX(X) :- right(_,X1-_), X1>X.
-getMaxX(X) :- right(_,X-_), \+ checkMaxX(X), !.
+getMaxX(MaxX) :- findall(X, right(_,X-_), Xarr), max_list(Xarr,MaxX), !.
+getMaxX(1).
 
-checkMinX(X) :- right(X1-_,_), X1<X.
-getMinX(X) :- right(X-_,_), \+ checkMinX(X), !.
+getMinX(MinX) :- findall(X, right(X-_,_), Xarr), min_list(Xarr,MinX), !.
+getMinX(1).
 
-checkMaxY(Y) :- top(_,_-Y1), Y1>Y.
-getMaxY(Y) :- top(_,_-Y), \+ checkMaxY(Y), !.
+getMaxY(MaxY) :- findall(Y, top(_,_-Y), Yarr), max_list(Yarr,MaxY), !.
+getMaxY(1).
 
-checkMinY(Y) :- top(_-Y1,_), Y1<Y.
-getMinY(Y) :- top(_-Y,_), \+ checkMinY(Y), !.
+getMinY(MinY) :- findall(Y, top(_-Y,_), Yarr), min_list(Yarr,MinY), !.
+getMinY(1).
 
 getSymbol(P,'#') :- wall(P), !.
 getSymbol(P,'@') :- initial(state(agent(P),_)), target(T), \+ member(P,T), !.
