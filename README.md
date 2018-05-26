@@ -165,3 +165,6 @@ m/p: 63/20
 CPU time = 156 msec
 true.
 ```
+
+### Tips
+- You can use `<Ctrl+C>` and then `<A>` key If tired to wait the solution.

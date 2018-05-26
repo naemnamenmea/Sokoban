@@ -39,6 +39,9 @@ d(Y) :- getMinX(MinX), MinX1 is MinX-1, drawLine(MinX1,Y,[]), Y1 is Y-1, d(Y1).
 
 %***********************************************************************************	
 
+pr([]).
+pr([H|T]) :- write(H), nl, pr(T).
+
 print_wrong_maps([]).
 print_wrong_maps([Map|Col]) :- format('* ~w~n',[Map]), print_wrong_maps(Col).
 	

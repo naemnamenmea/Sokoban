@@ -6,6 +6,10 @@
 :- dynamic box_/1.
 :- dynamic target_/1.
 :- dynamic solution/1.
+:- dynamic start/1.
+:- dynamic goal/1.
+:- dynamic next/3.
+:- dynamic h/2.
 
 :- style_check(-singleton).
 :- use_module(library(shlib), [ use_foreign_library/2 ]).
@@ -17,7 +21,8 @@
                                 subset/2,
                                 subtract/3,
                                 min_list/2,
-                                select/3 ]).
+                                select/3,
+                                list_to_set/2 ]).
 :- use_module(library(plunit), [ begin_tests/1,
                                  end_tests/1,
                                  run_tests/0 ]).

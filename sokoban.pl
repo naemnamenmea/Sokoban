@@ -10,15 +10,23 @@ final(state(_, boxes(B))) :- target(T), eq_lists(T,B).
 
 eq_lists(L1,L2) :- subset(L1,L2), subset(L2,L1).
  
-move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "R") :- right(P0,P1), right(P1,P2), member(P1,Bxs0), \+ banned(r,P2,Bxs0), select(P1,Bxs0,Bxs1).
-move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "L") :- right(P1,P0), right(P2,P1), member(P1,Bxs0), \+ banned(l,P2,Bxs0), select(P1,Bxs0,Bxs1).
-move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "U") :- top(P0,P1), top(P1,P2), member(P1,Bxs0), \+ banned(u,P2,Bxs0), select(P1,Bxs0,Bxs1).
-move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "D") :- top(P1,P0), top(P2,P1), member(P1,Bxs0), \+ banned(d,P2,Bxs0), select(P1,Bxs0,Bxs1).
+move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "R") :-
+    right(P0,P1), right(P1,P2), member(P1,Bxs0), \+ banned(r,P2,Bxs0), select(P1,Bxs0,Bxs1).
+move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "L") :-
+    right(P1,P0), right(P2,P1), member(P1,Bxs0), \+ banned(l,P2,Bxs0), select(P1,Bxs0,Bxs1).
+move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "U") :-
+    top(P0,P1), top(P1,P2), member(P1,Bxs0), \+ banned(u,P2,Bxs0), select(P1,Bxs0,Bxs1).
+move(state(agent(P0), boxes(Bxs0)), state(agent(P1), boxes([P2|Bxs1])), "D") :-
+    top(P1,P0), top(P2,P1), member(P1,Bxs0), \+ banned(d,P2,Bxs0), select(P1,Bxs0,Bxs1).
 
-move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "r") :- right(P0,P1), \+ member(P1,Boxes).
-move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "l") :- right(P1,P0), \+ member(P1,Boxes).
-move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "u") :- top(P0,P1), \+ member(P1,Boxes).
-move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "d") :- top(P1,P0), \+ member(P1,Boxes).
+move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "r") :-
+    right(P0,P1), \+ member(P1,Boxes).
+move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "l") :-
+    right(P1,P0), \+ member(P1,Boxes).
+move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "u") :-
+    top(P0,P1), \+ member(P1,Boxes).
+move(state(agent(P0), boxes(Boxes)), state(agent(P1), boxes(Boxes)), "d") :-
+    top(P1,P0), \+ member(P1,Boxes).
 
 
 dfs(Start,Finish,N,Path,Info) :- dfs(Start,Finish,0,N,Start,Path,Info).
@@ -168,7 +176,8 @@ solve_Astar(Map) :-
     Params = (
         pull, % Distance_Metric (pull, manhattan, pythagorean)
         closest, % Assignment_Algorithm (hungarian, greedy, closest)
-        once % Assignment_Recalculation (once, high)
+        once, % Assignment_Recalculation (once, high)
+        push_only % mode
     ),
     NewSol = true,
     solve_map(Map,Algo,Params,NewSol).
@@ -179,16 +188,16 @@ solve_dfs(Map) :-
     NewSol = true,
     solve_map(Map,Algo,Params,NewSol).
 	
-solve(a-star,(Metric,Assign_Algo,Assign_Recalc),Path,Info) :- aSearch(Path,Info).
+solve(a-star,(Metric,Assign_Algo,Assign_Recalc,Mode),Path,Info) :- aSearch(Path,Info,Mode).
 solve(dfs,Params,Path,Info) :- (initial(A), final(C), N=84, dfs(A,C,0,N,A,Path,Info)).
 
 print_info(a-star,ClosedNum-Frontier) :- 
-    format( 'Closed vertices: ~w~nMax open vertices: ~w~n',[ClosedNum,Frontier] ).
+    format('Closed vertices: ~w~nMax open vertices: ~w~n',[ClosedNum,Frontier]).
 print_info(dfs,Info) :-
     format('',[]).
    
 solve_map(Map,Algo,Params,NewSol) :- 
-    load_map(Map),
+    (load_map(Map) -> true ; format('No such map, try again...~n')),
     initial(state(agent(Agent),boxes(Boxes))), length(Boxes,Tlen),
     component_nodes(Agent,RV), length(RV,RVlen),
     format('Squares: ~w~nBoxes: ~w~n',[RVlen,Tlen]),
@@ -205,7 +214,7 @@ solve_map(Map,Algo,Params,NewSol) :-
         save_sol(Map)
     ),
     printList(Path,'',''), nl, nl,
-    print_info(Algo,Info),
+    (NewSol -> print_info(Algo,Info) ; true),
     length(Path,Moves),
     count_pushes(Path,Pushes),
     format('m/p: ~w/~w~n',[Moves,Pushes]),
@@ -227,16 +236,42 @@ opt_path(From,To,Path) :-
     retract(final/1),
     retract(target/1),
     retract(next/3),
-    steps(Sol,Path).
+    steps2path(Sol,Path).
+    
+jumps2path([X,Y|T],NNP) :- 
+    aStar_clear,
+    assert(goal(Y)),
+    assert(next(From,To,Cost) :- (move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1))),
+    assert(h(Pos,Val) :- evFunc(Pos,Val)), % выбор оценочной функции для поиска
+        'A*'(X, Sol, _),
+        steps2path(Sol,Path),
+    jumps2path([Y|T],NextPath),
+    append(Path,NextPath,NNP).
+jumps2path([_],[]).
+jumps2path([],[]).
 
-steps([X,Y|T],[P|NextPath]) :- move(X,Y,P), steps([Y|T],NextPath).
-steps([_],[]).
-steps([],[]).
+steps2path([X,Y|T],[P|NextPath]) :- move(X,Y,P), steps2path([Y|T],NextPath).
+steps2path([_],[]).
+steps2path([],[]).
 
-aSearch(P,Info) :- 
+aSearch(Path,Info,Mode) :- 
+    %-- настройка на предметную область:
+    aStar_clear,
+    assert(start(V) :- initial(V)),
+    assert(goal(V) :- final(V)),
+    (Mode == push_only ->
+        assert(next(From,To,Cost) :- (From = state(agent(A),boxes(Boxes)), find_all_push_moves(A,Boxes,(To,Cost)))) ;
+        assert(next(From,To,Cost) :- (move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1)))
+    ),
+    %assert(h(Pos,0)),
+    assert(h(Pos,Val) :- evFunc(Pos,Val)), % выбор оценочной функции для поиска
+    
     start(Start),
     'A*'(Start, Sol, Info),
-    steps(Sol,P).
+    (Mode == push_only ->
+        jumps2path(Sol,Path) ;
+        steps2path(Sol,Path)
+    ).
 
 'A*'(Start, Sol, ClosedNum-Frontier) :- h(Start, F), a_star( [ v( Start, noparent, 0, F) ], [] , Sol-(ClosedNum-Frontier) ).
 
@@ -247,9 +282,9 @@ a_star( Opens, Closed, Sol-(ClosedNum-0) ) :-
 
 a_star( [v(V,Prev,G,F)|Opens], Closed, Sol-(ClosedNum-FrontierMax) ) :-
 	findall( v(V1,V,G1,F1), (next(V,V1,C) ,
-	not( member(v(V1,_,_,_), Opens) ),
-	not( member(V1-_, Closed) ), G1 is G+C,
-	h(V1,H1), F1 is G1+H1), Childs),
+	\+ member(v(V1,_,_,_), Opens),
+	\+ member(V1-_, Closed),
+    G1 is G+C, h(V1,H1), F1 is G1+H1), Childs),
 	ord_insert_list( Childs, Opens, NewOpens ),
 	a_star( NewOpens, [V-Prev|Closed], Sol-(ClosedNum-FrontierPrevMax) ),
     length(NewOpens, NewOpensNum),
@@ -267,12 +302,17 @@ ord_insert(V,[],[V]).
 ord_insert(V,[H|T],[V,H|T]) :- V=v(_,_,_,F1), H=v(_,_,_,F2), F1=<F2, !.
 ord_insert(V,[H|T],[H|T2]) :- ord_insert(V,T,T2).
 
-%-- настройка на предметную область:
-start(V) :- initial(V).
-goal(V) :- final(V).
-next(From,To,Cost) :- move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1).
-%h(Pos,0).
-h(Pos,Val) :- evFunc(Pos,Val). % выбор оценочной функции для поиска
+aStar_clear :-
+    retractall(start(_)),
+    retractall(goal(_)),
+    retractall(next(_,_,_)),
+    retractall(h(_,_)).
+
+/*
+run1 :- find_all_push_moves(1-1,[2-3,3-2,2-4],P), pr([P]).
+run2 :- findall(P,find_all_push_moves(1-1,[2-3,3-2,2-4],P),R), pr(R), length(R,L), write(L), nl.
+run3 :- findall((R,Cost),  next(state(agent(1-1),boxes([2-3,3-2,2-4])),R,Cost),  R1), pr(R1).
+*/
 
 /***************************************************************************/
 
@@ -306,18 +346,32 @@ reachable_by_sokoban(Loc1,Loc2,History,BoxLocs,N):- %Передавать в  э
     ),
     sort(2,@=<,Cases,Sorted), %printList(Sorted), nl,
     r_b_s(Sorted,Loc2,History,BoxLocs,N).
-
-find_all_push_moves(Root,Boxes,PushMoves) :-
-    find_all_push_moves([Root],Boxes,[],PushMoves).
+    
+/* To find cost of path we can add new vertices to the end of Open list and use structure (V,Cost)
+find_all_push_moves(Root,Boxes,PM) :-
+    find_all_push_moves([Root],Boxes,[],PushMoves),
+    member(PM,PushMoves).
 find_all_push_moves([],_,_,[]).
 find_all_push_moves([V|Open],Boxes,History,AllPM) :-
     findall(Vm, (move(state(agent(V), boxes(Boxes)), state(agent(Vm), _), M), member(M,["d","u","l","r"]), \+ member(Vm,History)), Expanded),
     append(Open,Expanded,NewOpen),
     append([V|Expanded],History,NewHistory),
     find_all_push_moves(NewOpen,Boxes,NewHistory,OtherPM),
-    findall(edge(Vp,M), (move(state(agent(V), boxes(Boxes)), Vp, M), member(M,["D","U","L","R"])), NewPM),
+    findall((Vp,M), (move(state(agent(V), boxes(Boxes)), Vp, M), member(M,["D","U","L","R"])), NewPM),
     append(OtherPM,NewPM,AllPM).
- 
+*/
+find_all_push_moves(Root,Boxes,PM) :-
+    find_all_push_moves([Root],Boxes,[Root],0,PushMoves),
+    member(PM,PushMoves).
+find_all_push_moves([],_,_,_,[]) :- !.
+find_all_push_moves(Open,Boxes,History,Cost,AllPM) :-
+    findall(Vm, (member(V1,Open), move(state(agent(V1), boxes(Boxes)), state(agent(Vm), _), M), member(M,["d","u","l","r"]), \+ member(Vm,History)), Exp), list_to_set(Exp,Expanded),
+    append(Expanded,History,NewHistory),
+    Cost1 is Cost + 1,
+    find_all_push_moves(Expanded,Boxes,NewHistory,Cost1,OtherPM),
+    findall((Vp,Cost1), (member(V1,Open), move(state(agent(V1), boxes(Boxes)), Vp, M), member(M,["D","U","L","R"])), NewPM),
+    append(OtherPM,NewPM,AllPM).
+
 pr_queue_push(V,[],[V]).
 pr_queue_push(V,[H|T],[V,H|T]) :- V=(F1,_), H=(F2,_), F1=<F2, !.
 pr_queue_push(V,[H|T],[H|T2]) :- pr_queue_push(V,T,T2).
