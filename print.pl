@@ -1,10 +1,13 @@
 /*
-:- module(draw,
+:- module(print,
     [
-        print_map/1,
-        printPass/1,
-        printList/3,
-        printStringList/3
+        print_map/0,
+        print_map/1, % +Map
+        printPass/1, % +Pass
+        printList/3, % +List, +Prefix, +Suffix
+        printStringList/3, % +StringList, +Prefix, +Suffix
+        print_wrong_maps/1, % +List
+        pr/1 % +List
     ]).
 */   
 print_map :- map_path(Path), format('Path: \'~w\'~n',[Path]), print_map_.
@@ -31,12 +34,12 @@ getSymbol(P,'*') :- initial(state(_,boxes(B))), member(P,B), target(T), member(P
 getSymbol(P,'.') :- target(T), member(P,T), !.
 getSymbol(_,' ').
 
-drawLine(X,_,S) :- getMaxX(MaxX), MaxX1 is MaxX+1, X>MaxX1, !, reverse(S,S1), printList(S1,'',''), nl.
-drawLine(X,Y,String) :- getSymbol(X-Y,S), X1 is X+1, drawLine(X1,Y,[S|String]).
+printLine(X,_,S) :- getMaxX(MaxX), MaxX1 is MaxX+1, X>MaxX1, !, reverse(S,S1), printList(S1,'',''), nl.
+printLine(X,Y,String) :- getSymbol(X-Y,S), X1 is X+1, printLine(X1,Y,[S|String]).
 
 
 d(Y) :- getMinY(MinY), MinY1 is MinY-1, Y<MinY1, !.
-d(Y) :- getMinX(MinX), MinX1 is MinX-1, drawLine(MinX1,Y,[]), Y1 is Y-1, d(Y1).
+d(Y) :- getMinX(MinX), MinX1 is MinX-1, printLine(MinX1,Y,[]), Y1 is Y-1, d(Y1).
 
 %***********************************************************************************	
 

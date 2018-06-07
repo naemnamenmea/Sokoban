@@ -1,4 +1,4 @@
 :- dynamic solution/1.
 
-solution(["u", "L", "d", "l", "U"]).
+solution(["l", "U", "r", "u", "L"]).
 

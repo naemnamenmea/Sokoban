@@ -1,8 +1,9 @@
 /*
 :- module(sokoban,
 [
-    final/1,    
-    solve_map2/0
+    move/3, % +StateFrom, -StateTo, -Move
+    solve_Astar/1, % +Map
+    solve_dfs/1 % +Map
 ]).
 */
 
@@ -264,7 +265,7 @@ aSearch(Path,Info,Mode) :-
     assert(goal(V) :- final(V)),
     (Mode == push_only ->
         assert(next(From,To,Cost) :- (From = state(agent(A),boxes(Boxes)), find_all_push_moves(A,Boxes,(To,Cost)))) ;
-        assert(next(From,To,Cost) :- (move(From,To,Move), (member(Move,["U","D","R","L"]) -> Cost = 0 ; Cost = 1)))
+        assert(next(From,To,1) :- move(From,To,_))
     ),
     %assert(h(Pos,0)),
     assert(h(Pos,Val) :- evFunc(Pos,Val)), % выбор оценочной функции для поиска
@@ -310,12 +311,6 @@ aStar_clear :-
     retractall(goal(_)),
     retractall(next(_,_,_)),
     retractall(h(_,_)).
-
-/*
-run1 :- find_all_push_moves(1-1,[2-3,3-2,2-4],P), pr([P]).
-run2 :- findall(P,find_all_push_moves(1-1,[2-3,3-2,2-4],P),R), pr(R), length(R,L), write(L), nl.
-run3 :- findall((R,Cost),  next(state(agent(1-1),boxes([2-3,3-2,2-4])),R,Cost),  R1), pr(R1).
-*/
 
 /***************************************************************************/
 
@@ -374,7 +369,11 @@ find_all_push_moves(Open,Boxes,History,Cost,AllPM) :-
     find_all_push_moves(Expanded,Boxes,NewHistory,Cost1,OtherPM),
     findall((Vp,Cost1), (member(V1,Open), move(state(agent(V1), boxes(Boxes)), Vp, M), member(M,["D","U","L","R"])), NewPM),
     append(OtherPM,NewPM,AllPM).
-
+/*
+fapm_test1 :- find_all_push_moves(1-1,[2-3,3-2,2-4],P), pr([P]).
+fapm_test2 :- findall(P,find_all_push_moves(1-1,[2-3,3-2,2-4],P),R), pr(R), length(R,L), write(L), nl.
+fapm_test3 :- findall((R,Cost),  next(state(agent(1-1),boxes([2-3,3-2,2-4])),R,Cost),  R1), pr(R1).
+*/
 pr_queue_push(V,[],[V]).
 pr_queue_push(V,[H|T],[V,H|T]) :- V=(F1,_), H=(F2,_), F1=<F2, !.
 pr_queue_push(V,[H|T],[H|T2]) :- pr_queue_push(V,T,T2).

@@ -1,11 +1,17 @@
 /*
 :- module(convert,
     [
-        add_map_list/1,           % +File
+        add_maps/0,
+        add_maps/1,               % +ListOfFilesWithLvls
+        add_map_list/1,           % +FileWithLvls
+        solvable/1,               % +load
+        load_map/1,               % +Map
+        component_nodes/2,        % +Root, -Reachable
         remove_trailing_spaces/2, % +ListI, -ListO
         delete_all_except/3,      % +ListI, +ExceptList, -ListO
         delete_all/3,             % +ListI, +DelList, -ListO
-        erase_map/0               % retractall: top, right, target, initial
+        erase_map/0,              % retractall: top, right, target, initial
+        write_map/0               % listing: top, right, target, initial
     ]).
 */
 
