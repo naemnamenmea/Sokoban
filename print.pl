@@ -10,6 +10,7 @@
         pr/1 % +List
     ]).
 */   
+
 print_map :- map_path(Path), format('Path: \'~w\'~n',[Path]), print_map_.
 print_map(Map) :- load_map(Map), print_map_.
 print_map_ :- getMaxY(MaxY), MaxY1 is MaxY+1, d(MaxY1).
