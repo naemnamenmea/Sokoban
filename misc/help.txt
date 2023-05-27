@@ -1,0 +1,9 @@
+clear_screen :- format('~c~s', [0x1b, "[2J"]). %clearing-screen-in-swipl-prolog-in-windows
+
+
+Plain clear screen:
+
+cls :- write('\e[2J').
+Or with home reset:
+
+cls :- write('\e[H\e[2J').
